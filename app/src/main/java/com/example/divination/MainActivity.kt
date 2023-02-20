@@ -3,23 +3,24 @@ package com.example.divination
 import android.annotation.SuppressLint
 import android.os.Bundle
 import android.view.*
+import android.view.animation.Animation
+import android.view.animation.AnimationUtils
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.*
 import java.util.*
-import kotlin.collections.ArrayList
 import kotlin.random.Random
 
 
 class MainActivity : AppCompatActivity() {
 
     //Déclaration de constantes
-    private val msgListe = ArrayList<String>()
+    private var msgListe = ArrayList<String>()
+    private lateinit var msgRecyclerView: RecyclerView
     private val layoutManager = LinearLayoutManager(this@MainActivity, LinearLayoutManager.VERTICAL, false)
-    private val recyclerAdapter = MsgAdapter(msgListe,this@MainActivity)
-    private var trigAddMsg = false
+    private val recyclerAdapter = MsgAdapter(this@MainActivity, msgListe)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,7 +28,7 @@ class MainActivity : AppCompatActivity() {
 
         // Déclaration de constante lié aux Layout/visuel
         val editText: EditText = findViewById((R.id.user_input))
-        val msgRecyclerView = findViewById<RecyclerView>(R.id.msg_recycler_view)
+        msgRecyclerView = findViewById(R.id.msg_recycler_view)
 
 
         // Pour cacher la bar qui contient le titre
@@ -52,26 +53,21 @@ class MainActivity : AppCompatActivity() {
                     msgRecyclerView.layoutManager = layoutManager
                     msgRecyclerView.adapter = recyclerAdapter
 
-                    val deferredResult = GlobalScope.async {
-                        //val asyngMsg = Async(Dispatchers.IO) {sendAnswer()}
-                        delay(2000)
-                        sendAnswer()
-                        //recyclerAdapter.notifyDataSetChanged()
-                    }
+                    sendAnswer()
+
+                    // Vide le champ text
                     editText.text.clear()
                     return true
                 }
                 return false
             }
             // On enregistre une réponse auto-généré
-            suspend fun sendAnswer() {
-                delay(2000L)
+            fun sendAnswer() {
                 msgListe.add(generateAnswer())
             }
         })
-        println("this is lifecycle: $lifecycle")
-        recyclerAdapter.notifyDataSetChanged()
     }
+
 
     // Renvoie une réponse généré
     private fun generateAnswer(): String {
@@ -86,14 +82,16 @@ class MainActivity : AppCompatActivity() {
         val randomAdverb = adverbLists[Random.nextInt(adverbLists.size)]
         return "$randomAdverb Koha"
     }
+
 }
 
 //On met en forme les messages
-class MsgAdapter(private val msgList: ArrayList<String>, private val context: MainActivity) : RecyclerView.Adapter<MsgAdapter.MsgViewHolder>() {
-
+class MsgAdapter(private val context: MainActivity, private val msgList: ArrayList<String>) : RecyclerView.Adapter<MsgAdapter.MsgViewHolder>() {
+    private var lastPosition = -1
     @SuppressLint("RtlHardcoded")
     override fun onBindViewHolder(msgViewHolder: MsgViewHolder, index: Int) {
         val gravityMsg = msgViewHolder.contentTextView.layoutParams as LinearLayout.LayoutParams
+
         if (!isEven(index)) {
             gravityMsg.gravity = Gravity.RIGHT
         } else {
@@ -101,6 +99,8 @@ class MsgAdapter(private val msgList: ArrayList<String>, private val context: Ma
         }
 
         msgViewHolder.contentTextView.text = msgList[index]
+        setAnimation(msgViewHolder.contentTextView, index)
+
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MsgViewHolder {
@@ -116,9 +116,19 @@ class MsgAdapter(private val msgList: ArrayList<String>, private val context: Ma
     inner class MsgViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val contentTextView: TextView = view.findViewById(R.id.msg_content_1)
     }
+
+    private fun  setAnimation(viewToAnimate: View, position: Int) {
+        if(position > lastPosition) run {
+            val animation: Animation =
+                AnimationUtils.loadAnimation(context, R.anim.layout_animation_going_right_to_left)
+            viewToAnimate.startAnimation(animation)
+            lastPosition = position
+        }
+    }
 }
 
 // Détermine si un nombre est pair
 private fun isEven(number: Number): Boolean {
     return number.toInt() % 2 == 0
 }
+
